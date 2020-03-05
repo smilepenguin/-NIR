@@ -1,41 +1,54 @@
 clear all
 clc
-n=50; % РєРѕР»РёС‡РµСЃС‚РІРѕ Р°Р±РѕРЅРµРЅС‚РѕРІ
-p=6; % РЅР°С€ Р°Р±РѕРЅРµРЅС‚
-NumberSlots = 5*10^4; % РєРѕР»РёС‡РµСЃС‚РІРѕ СЃР»РѕС‚РѕРІ
-Q = zeros(1, NumberSlots);% С‡РёСЃР»Рѕ СЃРѕРѕР±С‰РµРЅРёР№ РІ СЃР»РѕС‚Рµ РѕС‚ РѕРґРЅРѕРіРѕ Р°Р±РѕРЅРµРЅС‚Р°
-Q1 = zeros(1, NumberSlots);
-lam = 0.05:0.01:1; % РІРµСЂРѕСЏС‚РЅРѕСЃС‚СЊ РѕС‚РїСЂР°РІРєРё СЃРѕРѕР±С‰РµРЅРёСЏ РѕРґРЅРёРј Р°Р±РѕРЅРµРЅС‚РѕРј
-% lam=0.2;
-T = zeros(1,length(lam));% СЃСЂРµРґРЅРµРµ С‡РёСЃР»Рѕ СЃРѕРѕР±С‰РµРЅРёР№ РІ СЃР»РѕС‚Рµ
-P = zeros(1,length(lam));% РІРµСЂРѕСЏС‚РЅРѕСЃС‚СЊ С‚РёРїР° РєРѕР»Р»РёР·РёРё
+n=100; % количество абонентов
+p=6; % наш абонент
+NumberSlots = 5*10^4; % количество слотов
+Q = zeros(1, NumberSlots);% число сообщений в слоте от одного абонента
+%lam = 0.001:0.01:0.99; % вероятность отправки сообщения одним абонентом
+lam=0.001:0.001:0.015;
+T = zeros(1,length(lam));% среднее число сообщений в слоте
+Kolliz = zeros(1,length(lam)); % 2 part
 for i = 1:length(lam)
-    I = zeros(1, NumberSlots);
     Q = zeros(1, NumberSlots);
-    Q1 = zeros(1, NumberSlots);
-    InterFlow = randsrc(1, NumberSlots, [1, 0; lam(i)/n, 1-lam(i)/n]);%random('poiss', lam(i), [1, NumberSlots]); %СЂР°СЃРїСЂРµРґРµР»РµРЅРёРµ РґРёСЃРєСЂРµС‚РЅРѕР№ СЃР»СѓС‡Р°Р№РЅРѕР№ РІРµР»РёС‡РёРЅС‹
-    InterFlow1 = random('poiss', lam(i), [1, NumberSlots]); 
-    Q(1)=InterFlow(1);
-    Q1(1)=InterFlow1(1);
+    Koll = 0;
+    Tell = 0;
+    SlotFlow = randsrc(1, n, [1, 0; lam(i), 1-lam(i)]);% Все генерируют в одном слоте 
+    if sum(SlotFlow) > 1 % количество отправивших в первом слоте
+        Koll = Koll +1; %возникновение коллизии
+    end;
+    if sum(SlotFlow) == 1
+        Tell = Tell +1; % сообщение отправлено без ошибок
+    end;
+    InterFlow = randsrc(1, NumberSlots, [1, 0; lam(i), 1-lam(i)]); %распределение случайной величины 
+    Q(1)=InterFlow(1); % число сообщений в слоте
     for slot=2:NumberSlots
          Q(slot) = Q(slot - 1)+ InterFlow(slot);
-         Q1(slot) = Q1(slot - 1)+ InterFlow1(slot);
         if mod(slot, n) == p
             Q(slot)= Q(slot) -(Q(slot - 1) >0);
         end
-        if InterFlow1 (slot)>1 
-           P(i) = P(i) + 1;
-        end
+        
+        SlotFlow = randsrc(1, n, [1, 0; lam(i), 1-lam(i)]);
+         if sum(SlotFlow) > 1 
+            Koll = Koll +1;
+        end;
+         if sum(SlotFlow) == 1
+            Tell = Tell +1;
+        end;
     end
     T(i) = n*sum(Q)/NumberSlots; 
-    P(i) = P(i)/NumberSlots;
+    Kolliz(i)= Koll/(Tell + Koll);
 end
 figure(1);
-plot(lam, T,'y');
-legend({'РњРѕРґРµР»РёСЂРѕРІР°РЅРёРµ n=8'});
+plot(lam, T,'b');
+legend({'Моделирование n=100'});
 grid on
-%axis([0,1,0,20])
-xlabel('lam');
-ylabel('Q');
+%axis([0,0.015,0,20000])
+xlabel('Вероятность отправки');
+ylabel('Среднее число сообщений в слоте');
+
 figure(2);
-plot(lam, P,'y');
+plot(lam, Kolliz,'b');
+legend({'Моделирование n=100'});
+grid on
+xlabel('Вероятность отправки');
+ylabel('Вероятность коллизии');
